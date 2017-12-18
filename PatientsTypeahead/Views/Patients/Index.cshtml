@@ -1,0 +1,122 @@
+﻿@{
+    ViewBag.Title = "Index";
+}
+<h2>Patient Search using Typeahead</h2>
+
+@using (Html.BeginForm("Index", "Patients", FormMethod.Post))
+{
+    <div class="container">
+        <div class="jumbotron">
+            <div class="container-fluid">
+                <div class="form-group">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <input type="text"
+                                   id="txtSearchPatient"
+                                   name="FirstorLastName"
+                                   class="form-control"
+                                   placeholder="Search with First Name or Last Name"
+                                   autocomplete="off" />
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <input type="button"
+                                   id="btnClear"
+                                   class="btn btn-danger"
+                                   value="Clear" />
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="row">
+                        <div class="col-md-12" id="divSearch">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+@section scripts {
+    <script type="text/javascript">
+        $(function () {
+            // hide the table on page load
+            $("#divSearch").hide();
+            // clear the textbox search on cilck of button clear
+            $("#btnClear").click(function () {
+                $("#txtSearchPatient").val('');
+            });
+            // invoke typeahead when the user searches
+            $("#txtSearchPatient").typeahead({
+                hint: true,
+                highlight: true,
+                minLength: 2, // set the min length to 2
+                source: function (request, response) {
+                    var input = request.toLowerCase(); // convert the search data to lower
+                    // invoke the backend api by passing the user entered data in the textbox
+                    $.ajax({
+                        url: '/PatientsTypeahead/Patients/AutoComplete/',
+                        data: "{ 'prefix': '" + input + "'}",
+                        dataType: "json",
+                        type: "POST",
+                        contentType: "application/json; charset=utf-8",
+                        success: function (data) {
+                            // data will have the backend list based on the user search
+                            items = [];
+                            map = {};
+                            // loop through the collection and store
+                            $.each(data, function (i, item) {
+                                var name = item.firstName + ' ' + item.lastName;
+                                map[name] = {
+                                    id: item.id,
+                                    name: name,
+                                    firstName: item.firstName,
+                                    lastName: item.lastName,
+                                    dob: item.dateOfbirth,
+                                    phoneNumber: item.phoneNumber
+                                };
+                                items.push(name);
+                            });
+                            response(items);
+                            $(".dropdown-menu").css("height", "auto");
+                        },
+                        error: function (response) {
+                            // show alert in error
+                            alert(response.responseText);
+                        },
+                        failure: function (response) {
+                            // show alert in error
+                            alert(response.responseText);
+                        }
+                    });
+                },
+                updater: function (item) {
+                    // on click of the selected patient
+                    var patient = map[item];
+                    // empty the div before adding the selected entry to the table
+                    $("#divSearch").empty();
+                    // build the table dynamically and append to div
+                    var tbl = $('<table id="tableSearch" class="table table-hover table-responsive"><tr>' +
+                                '<th>Id</th><th>First Name</th><th>Last Name</th><th>Date Of Birth</th><th>Phone Number</th>'
+                                + '</tr>');
+                    var tr = $("<tr>");
+                    $("<td>" + patient.id + "</td>" +
+                        "<td>" + patient.firstName + "</td>" +
+                        "<td>" + patient.lastName + "</td>" +
+                        "<td>" + patient.dob + "</td>" +
+                        "<td>" + patient.phoneNumber + "</td>").appendTo(tr);
+                    tbl.append(tr);
+                    // previous search values are not displayed , only the current searched patient information is shown
+                    $('#divSearch').append(tbl);
+                    // show the div after appending
+                    $("#divSearch").show();
+                    return item;
+                }
+            });
+        });
+    </script>
+
+}
